@@ -15,7 +15,9 @@ local function matrix_mult(m1, m2)
 end
 
 local function rotation_matrix(axis, theta)
-    local c, s = math.cos(theta), math.sin(theta)
+    -- Account for left-handed rotation by negating the angle
+    local angle = -theta
+    local c, s = math.cos(angle), math.sin(angle)
     local t = 1 - c
     local x, y, z = axis.x, axis.y, axis.z
     return {
@@ -430,7 +432,9 @@ local function set_joint_angles(I, joints, joint_angles)
     
     for i, scid in ipairs(joints) do
         if joint_angles[i] then
-            I:SetSpinBlockRotationAngle(scid, joint_angles[i])
+            -- Convert from radians to degrees and account for left-handed rotation
+            local angle_degrees = -joint_angles[i] * 180 / math.pi
+            I:SetSpinBlockRotationAngle(scid, angle_degrees)
         end
     end
 end
@@ -449,6 +453,7 @@ function Update(I)
         I:Log("=== Starting SEW IK Test ===")
         I:Log("Target: " .. tostring(target_pos))
         I:Log("SEW angle: " .. tostring(sew_angle * 180/math.pi) .. " degrees")
+        I:Log("Using left-handed rotation convention for spin blocks")
         
         local solutions = ik_solver_sew(I, target_pos, target_rot, sew_angle, E_T, E_R)
         
