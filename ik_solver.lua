@@ -364,7 +364,7 @@ local function ik_solver_sew(I, target_pos, target_rot, sew_angle, e_t, e_r)
     if q5 and q6 and q7 then
         local solution = {q1, q2, q3, q4, q5, q6, q7}
         table.insert(solutions, solution)
-        I:Log("Found solution: " .. table.concat(solution, ", "))
+        I:Log("Found solution: ") -- .. table.concat(solution, ", ")
     end
     
     return solutions
@@ -479,4 +479,15 @@ function Update(I)
     if iteration > 20 then
         iteration = 0
     end
+end
+
+function concat(table, sep)
+    local result = ""
+    for i, v in ipairs(table) do
+        result = result .. tostring(v)
+        if i < #table then
+            result = result .. sep
+        end
+    end
+    return result
 end
