@@ -394,13 +394,13 @@ DH_PARAMS = {
 
 -- Joint axes in base frame at zero configuration
 JOINT_AXES = {
-    Vector3(0, 0, 1),    -- Joint 1: z-axis
-    Vector3(1, 0, 0),    -- Joint 2: x-axis
-    Vector3(0, 1, 0),    -- Joint 3: y-axis
-    Vector3(1, 0, 0),    -- Joint 4: x-axis
-    Vector3(0, 1, 0),    -- Joint 5: y-axis
-    Vector3(1, 0, 0),    -- Joint 6: x-axis
-    Vector3(0, 0, 1)     -- Joint 7: z-axis
+    Vector3( 1,  0,  0), -- Joint 1:  x-axis
+    Vector3( 0,  1,  0), -- Joint 2:  y-axis
+    Vector3( 0,  0, -1), -- Joint 3: -z-axis
+    Vector3(-1,  0,  0), -- Joint 4: -x-axis
+    Vector3( 0,  1,  0), -- Joint 5:  y-axis
+    Vector3(-1,  0,  0), -- Joint 6: -x-axis
+    Vector3( 0,  0,  1)  -- Joint 7:  z-axis
 }
 
 -- Stereographic SEW parameters
@@ -429,7 +429,7 @@ local function set_joint_angles(I, joints, joint_angles)
         I:Log("Error: No joint angles provided")
         return
     end
-    
+
     for i, scid in ipairs(joints) do
         if joint_angles[i] then
             -- Convert from radians to degrees and account for left-handed rotation
@@ -479,15 +479,4 @@ function Update(I)
     if iteration > 20 then
         iteration = 0
     end
-end
-
-function concat(table, sep)
-    local result = ""
-    for i, v in ipairs(table) do
-        result = result .. tostring(v)
-        if i < #table then
-            result = result .. sep
-        end
-    end
-    return result
 end
