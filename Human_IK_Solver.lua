@@ -8,14 +8,33 @@
 Matrix = {}
 Matrix.__typename = "Matrix"
 
+-- Fixed Matrix constructor to prevent reference sharing
 function Matrix:new(data)
-    data = data
-    self.rows = #data
-    self.cols = #data[1] or 1
-    setmetatable(data, self)
+    local obj = {}
+    obj.rows = #data
+    obj.cols = #data[1] or 1
+    
+    -- Deep copy the data to prevent reference sharing
+    for i = 1, obj.rows do
+        obj[i] = {}
+        for j = 1, obj.cols do
+            obj[i][j] = data[i][j]
+        end
+    end
+    
+    setmetatable(obj, self)
     self.__index = self
-    return data
+    return obj
 end
+
+-- function Matrix:new(data)
+--     data = data
+--     self.rows = #data
+--     self.cols = #data[1] or 1
+--     setmetatable(data, self)
+--     self.__index = self
+--     return data
+-- end
 
 function Matrix:tostring()
     local str = ""
@@ -29,37 +48,38 @@ function Matrix:tostring()
     return str
 end
 
--- can return either a Vector3 or a table depending on input type
-function Matrix:mulVector(other)
-    -- Vector3
-    if self.cols ~= 3 or self.rows ~= 3 then
-        local result = {}
+-- -- can return either a Vector3 or a table depending on input type
+-- function Matrix:mulVector(other)
+--     -- Vector3
+--     if self.cols ~= 3 or self.rows ~= 3 then
+--         local result = {}
 
-        for i = 1, self.rows do
-            result[i] = {}
-            result[i][1] = self[1][1] * other.x + self[1][2] * other.y + self[1][3] * other.z
-        end
+--         for i = 1, self.rows do
+--             result[i] = {}
+--             result[i][1] = self[1][1] * other.x + self[1][2] * other.y + self[1][3] * other.z
+--         end
 
-        return Matrix:new(result)
-    end
-    return Vector3(
-        self[1][1] * other.x + self[1][2] * other.y + self[1][3] * other.z,
-        self[2][1] * other.x + self[2][2] * other.y + self[2][3] * other.z,
-        self[3][1] * other.x + self[3][2] * other.y + self[3][3] * other.z
-    )
-end
+--         return Matrix:new(result)
+--     end
+--     return Vector3(
+--         self[1][1] * other.x + self[1][2] * other.y + self[1][3] * other.z,
+--         self[2][1] * other.x + self[2][2] * other.y + self[2][3] * other.z,
+--         self[3][1] * other.x + self[3][2] * other.y + self[3][3] * other.z
+--     )
+-- end
 
--- transpose function
-function transpose(I, m) -- transpose of the matrix
+
+-- Fixed transpose function for Vector3
+function transpose(I, m)
     if m.__typename == "Vector3" then
+        -- Vector3 transpose should be 1x3 (row vector)
         return Matrix:new({
             {m.x, m.y, m.z}
         })
     end
 
-    -- initalize result matrix
+    -- For matrices, swap rows and columns
     local result = {}
-
     for j = 1, m.cols do
         result[j] = {}
         for i = 1, m.rows do
@@ -70,6 +90,27 @@ function transpose(I, m) -- transpose of the matrix
     return Matrix:new(result)
 end
 
+-- -- transpose function
+-- function transpose(I, m) -- transpose of the matrix
+--     if m.__typename == "Vector3" then
+--         return Matrix:new({
+--             {m.x, m.y, m.z}
+--         })
+--     end
+
+--     -- initalize result matrix
+--     local result = {}
+
+--     for j = 1, m.cols do
+--         result[j] = {}
+--         for i = 1, m.rows do
+--             result[j][i] = m[i][j]
+--         end
+--     end
+
+--     return Matrix:new(result)
+-- end
+
 function Matrix:get_column(col) -- I may wanto to return a table instead of a Vector3
     local result = Vector3(0, 0, 0)
     for i = 1, self.rows do
@@ -78,14 +119,102 @@ function Matrix:get_column(col) -- I may wanto to return a table instead of a Ve
     return result
 end
 
+-- function Matrix:__mul(other)
+--     -- matrix-vector multiplication
+--     if other.__typename == "Vector3" then
+--         return self:mulVector(other)
+--     end
+
+--     -- matrix-matrix multiplication
+--     if other.__typename == "Matrix" then
+--         local result = {}
+--         for i = 1, self.rows do
+--             result[i] = {}
+--             for j = 1, other.cols do
+--                 result[i][j] = 0
+--                 for k = 1, self.cols do
+--                     result[i][j] = result[i][j] + self[i][k] * other[k][j]
+--                 end
+--             end
+--         end
+--         return Matrix:new(result)
+--     end
+
+--     -- scalar multiplication
+--     if type(other) == "number" then
+--         local result = {}
+--         for i = 1, self.rows do
+--             result[i] = {}
+--             for j = 1, self.cols do
+--                 result[i][j] = self[i][j] * other
+--             end
+--         end
+--         return Matrix:new(result)
+--     end
+-- end
+
+-- Fixed Matrix:mulVector function
+function Matrix:mulVector(other)
+    -- Check if this is a 3x3 matrix multiplying a Vector3 (return Vector3)
+    if self.cols == 3 and self.rows == 3 then
+        return Vector3(
+            self[1][1] * other.x + self[1][2] * other.y + self[1][3] * other.z,
+            self[2][1] * other.x + self[2][2] * other.y + self[2][3] * other.z,
+            self[3][1] * other.x + self[3][2] * other.y + self[3][3] * other.z
+        )
+    else
+        -- General case: return a matrix
+        if self.cols ~= 3 then
+            error("Matrix column count (" .. self.cols .. ") doesn't match Vector3 dimension (3)")
+        end
+        
+        local result = {}
+        for i = 1, self.rows do
+            result[i] = {}
+            result[i][1] = self[i][1] * other.x + self[i][2] * other.y + self[i][3] * other.z
+        end
+        
+        return Matrix:new(result)
+    end
+end
+
+-- Alternative simpler approach - always return a matrix for consistency
+function Matrix:mulVector(other)
+    if self.cols ~= 3 then
+        error("Matrix column count (" .. self.cols .. ") doesn't match Vector3 dimension (3)")
+    end
+    
+    local result = {}
+    for i = 1, self.rows do
+        result[i] = {}
+        result[i][1] = self[i][1] * other.x + self[i][2] * other.y + self[i][3] * other.z
+    end
+    
+    return Matrix:new(result)
+end
+
 function Matrix:__mul(other)
     -- matrix-vector multiplication
     if other.__typename == "Vector3" then
-        return self:mulVector(other)
+        if self.cols ~= 3 then
+            error("Matrix column count (" .. self.cols .. ") doesn't match Vector3 dimension (3)")
+        end
+        
+        -- Always return a matrix for consistency
+        local result = {}
+        for i = 1, self.rows do
+            result[i] = {}
+            result[i][1] = self[i][1] * other.x + self[i][2] * other.y + self[i][3] * other.z
+        end
+        return Matrix:new(result)
     end
 
     -- matrix-matrix multiplication
     if other.__typename == "Matrix" then
+        if self.cols ~= other.rows then
+            error("Matrix dimension mismatch: " .. self.rows .. "x" .. self.cols .. " * " .. other.rows .. "x" .. other.cols)
+        end
+        
         local result = {}
         for i = 1, self.rows do
             result[i] = {}
@@ -110,6 +239,8 @@ function Matrix:__mul(other)
         end
         return Matrix:new(result)
     end
+    
+    error("Unsupported multiplication type: " .. type(other))
 end
 
 function Matrix:__pow(exp)
@@ -170,11 +301,11 @@ local function vector_angle(v1, v2)
 end
 
 -- Constants and parameters
-Matrix.Identity = Matrix:new{
+Matrix.Identity = Matrix:new({
     {1, 0, 0},
     {0, 1, 0},
     {0, 0, 1}
-}
+})
 
 custom_joint_names = {"j1", "j2", "j3", "j4", "j5", "j6", "j7"}
 
@@ -282,7 +413,6 @@ local function subproblem_4(I, h, p, k, d)
     I:Log(A_1.rows .. "x" .. A_1.cols)
     I:Log(transpose(I, h).rows .. "x" .. transpose(I, h).cols)
     I:Log(A_1.rows .. "x" .. A_1.cols)
-    I:Log(transpose(I, h).rows .. "x" .. transpose(I, h).cols)
 
     local A = transpose(I, h) * A_1
 

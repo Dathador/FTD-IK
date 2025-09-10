@@ -1,0 +1,35 @@
+    I=LuaBinding- stack5
+    I=LuaBinding
+- stack4
+    set_joint_angles=function: 0x01bb62f3bff8
+    get_joint_list=function: 0x01bb62f3bfc8
+    IK_3R_R_3R=function: 0x01bb632b1dc0
+    psi=0.78539816339745
+    target_rot=table: 0x01bb632527e8
+    target_pos=Vector3(15.000000,0.000000,10.000000)
+    I=LuaBinding
+- stack3
+    subproblem_1=function: 0x01bb62f3c108
+    subproblem_4=function: 0x01bb62f3c028
+    rot=function: 0x01bb635f1910
+    subproblem_2=function: 0x01bb62f3c0d0
+    subproblem_3=function: 0x01bb62f3c060
+    inv_kin=function: 0x01bb62f3c138
+    is_LS_vec=table: 0x01bb62f3c4a8
+    kin=table: 0x01bb63250200
+    psi=0.78539816339745
+    p_0T=Vector3(15.000000,0.000000,10.000000)
+    R_07=table: 0x01bb632527e8
+    I=LuaBinding
+- stack2
+    Vector3=table: 0x01bb1cea5458
+    b=table: 0x01bb62f3c640
+    a=Vector3(15.000000,0.000000,10.000000)
+- stack1
+	[string "temp buffer"]:76: in function <[string "temp buffer"]:74>
+	[string "temp buffer"]:70: in function 'RunUpdate'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:573: in function 'Update'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:502: in function 'IK_3R_R_3R'
+	[string "ValueTypeScript"]:207: in function '__sub'
+stack traceback:
+[string "ValueTypeScript"]:207: attempt to perform arithmetic on a table value
