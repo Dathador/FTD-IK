@@ -1,35 +1,55 @@
-    I=LuaBinding- stack5
+    I=LuaBinding- stack6
     I=LuaBinding
-- stack4
-    set_joint_angles=function: 0x01bb62f3bff8
-    get_joint_list=function: 0x01bb62f3bfc8
-    IK_3R_R_3R=function: 0x01bb632b1dc0
+- stack5
+    set_joint_angles=function: 0x01bac42ff000
+    get_joint_list=function: 0x01bac42fc158
     psi=0.78539816339745
-    target_rot=table: 0x01bb632527e8
+    target_rot=table: 0x01bb635fcd98
     target_pos=Vector3(15.000000,0.000000,10.000000)
     I=LuaBinding
-- stack3
-    subproblem_1=function: 0x01bb62f3c108
-    subproblem_4=function: 0x01bb62f3c028
-    rot=function: 0x01bb635f1910
-    subproblem_2=function: 0x01bb62f3c0d0
-    subproblem_3=function: 0x01bb62f3c060
-    inv_kin=function: 0x01bb62f3c138
-    is_LS_vec=table: 0x01bb62f3c4a8
-    kin=table: 0x01bb63250200
+- stack4
+    subproblem_1=function: 0x01bac42f96b0
+    subproblem_4=function: 0x01bac42f95d0
+    rot=function: 0x01bac42ff158
+    subproblem_2=function: 0x01bac42f9678
+    subproblem_3=function: 0x01bac42f9608
+    inv_kin=function: 0x01bac42fcd90
+    n_SEW=Vector3(-0.452679,0.707107,0.543214)
+    e_CE=Vector3(0.452679,0.707107,-0.543214)
+    p_SW=Vector3(12.000000,0.000000,10.000000)
+    S=Vector3(0.000000,0.000000,0.000000)
+    W=Vector3(12.000000,0.000000,10.000000)
+    R_07_times_P8=Vector3(3.000000,0.000000,0.000000)
+    is_LS_vec=table: 0x01bac42fd0e8
+    Q=table: 0x01bac42fd0a0
+    kin=table: 0x01bac42f9ab8
     psi=0.78539816339745
     p_0T=Vector3(15.000000,0.000000,10.000000)
-    R_07=table: 0x01bb632527e8
+    R_07=table: 0x01bb635fcd98
+    I=LuaBinding
+- stack3
+    norm_squared=function: 0x01bac42ff1b8
+    temp=Vector3(0.000000,0.000000,676.500000)
+    norm_A_2=nil
+    b=-61.5
+    A=table: 0x01bb63023c48
+    A_1=table: 0x01bac42fe8d8
+    A_11m=Vector3(-0.000000,-0.000000,-0.000000)
+    A_11=Vector3(0.000000,0.000000,0.000000)
+    d=-61.5
+    k=Vector3(0.000000,1.000000,0.000000)
+    p=Vector3(0.000000,0.000000,0.000000)
+    h=Vector3(-0.000000,-0.000000,-11.000000)
     I=LuaBinding
 - stack2
-    Vector3=table: 0x01bb1cea5458
-    b=table: 0x01bb62f3c640
-    a=Vector3(15.000000,0.000000,10.000000)
+    other=Vector3(0.000000,0.000000,676.500000)
+    self=table: 0x01bac42fe8d8
 - stack1
 	[string "temp buffer"]:76: in function <[string "temp buffer"]:74>
 	[string "temp buffer"]:70: in function 'RunUpdate'
-	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:573: in function 'Update'
-	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:502: in function 'IK_3R_R_3R'
-	[string "ValueTypeScript"]:207: in function '__sub'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:621: in function 'Update'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:561: in function 'IK_3R_R_3R'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:462: in function 'subproblem_3'
+	[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:200: in function '__mul'
 stack traceback:
-[string "ValueTypeScript"]:207: attempt to perform arithmetic on a table value
+[string "-- 7-DOF Inverse Kinematic Solver using Stere..."]:200: attempt to call global 'error' (a nil value)

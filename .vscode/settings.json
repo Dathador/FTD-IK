@@ -1,0 +1,6 @@
+{
+    "Lua.diagnostics.globals": [
+        "Vector3",
+        "Quaternion"
+    ]
+}
