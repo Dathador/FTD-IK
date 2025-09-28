@@ -1,7 +1,9 @@
-function Update(I)
-    local v = Vector3(1, 0, 0)
-    local u = Vector3(0, 1, 0)
+-- test scratch file
 
-    local w = Vector3.Cross(v, u)
-    I:Log(string.format("v: (%.4f, %.4f, %.4f)", v.x, v.y, v.z))
+function Update(I)
+    local v_x = Vector3(1, 0, 0)
+    local v_y = Vector3(0, 1, 0)
+
+    local v_z = Vector3.Cross(v_x, v_y)
+    I:Log(v_z) -- should be (0, 0, 1)
 end

@@ -1,5 +1,5 @@
 -- matrix class
-Matrix = {}
+local Matrix = {}
 Matrix.__typename = "Matrix"
 
 function Matrix:new(data)
@@ -137,4 +137,12 @@ function Matrix:__unm()
         end
     end
     return Matrix:new(result)
+end
+
+local function skew_symmetric(v) -- Create a skew-symmetric matrix from a vector
+    return Matrix:new{
+        {0, -v.z, v.y},
+        {v.z, 0, -v.x},
+        {-v.y, v.x, 0}
+    }
 end
