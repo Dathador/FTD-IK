@@ -195,40 +195,80 @@ Matrix.Identity = Matrix:new({
     {0, 0, 1}
 })
 
+
+LEFT_ARM_PARAMETERS = {
+    custom_joint_names = {"lj1", "lj2", "lj3", "lj4", "lj5", "lj6", "lj7"},
+
+    -- Stereographic SEW parameters
+    -- these will need to be made into variables so I can control the left and right arms
+    e_t = Vector3(1, 0, 0),    -- translation vector (singularity direction), Point away from workspace 
+    e_r = Vector3(0, 1, 0),     -- Reference direction
+
+    dse = 11,  -- shoulder to elbow distance
+    dew = 11,  -- elbow to wrist distance
+    dwt = 3,   -- wrist to tool distance
+
+    kinematics = {}
+}
+LEFT_ARM_PARAMETERS.kinematics = {
+    P = {
+        -- Position vectors between joints (left-handed: x=right, y=up, z=forward)
+        Vector3(-8, 20, 0),   -- Base to Shoulder (joint 1)
+        Vector3( 0, 0, 0),    -- Shoulder to joint 2
+        Vector3( 0, 0, 0),    -- joint 2 to joint 3
+        Vector3( 0,-LEFT_ARM_PARAMETERS.dse, 0),  -- joint 3 to joint 4 (elbow)
+        Vector3( 0, 0, LEFT_ARM_PARAMETERS.dew),    -- joint 4 to joint 5
+        Vector3( 0, 0, 0),  -- joint 5 to joint 6 (wrist)
+        Vector3( 0, 0, 0),    -- joint 6 to joint 7
+        Vector3( 0, 0, LEFT_ARM_PARAMETERS.dwt)   -- joint 7 to end effector
+    },
+    H = {
+        -- GLOBAL joint rotation axes - these need to be measured from your actual robot
+        Vector3(-1, 0, 0),  -- Joint 1: X-axis
+        Vector3( 0, 0, 1),  -- Joint 2: Z-axis
+        Vector3( 0,-1, 0),  -- Joint 3:-Y-axis
+        Vector3( 1, 0, 0),  -- Joint 4:-X-axis
+        Vector3( 0, 0, 1),  -- Joint 5: Z-axis
+        Vector3( 1, 0, 0),  -- Joint 6:-X-axis
+        Vector3( 0, 1, 0)   -- Joint 7: Y-axis
+    }
+}
+
 RIGHT_ARM_PARAMETERS = {
-    custom_joint_names = {"j1", "j2", "j3", "j4", "j5", "j6", "j7"},
+    custom_joint_names = {"rj1", "rj2", "rj3", "rj4", "rj5", "rj6", "rj7"},
 
     -- Stereographic SEW parameters
     -- these will need to be made into variables so I can control the left and right arms
     e_t = Vector3(-1, 0, 0),    -- translation vector (singularity direction), Point away from workspace 
-    e_r = Vector3(0, 0, -1),     -- Reference direction
+    e_r = Vector3(0, 1, 0),     -- Reference direction
 
     dse = 11,  -- shoulder to elbow distance
-    dew = 11,  -- elbow to wrist distance  
+    dew = 11,  -- elbow to wrist distance
     dwt = 3,   -- wrist to tool distance
 
-    kinematics = {
-        P = {
-            -- Position vectors between joints (left-handed: x=right, y=up, z=forward)
-            Vector3(8, 20, 0),   -- Base to Shoulder (joint 1)
-            Vector3(0, 0, 0),    -- Shoulder to joint 2
-            Vector3(0, 0, 0),    -- joint 2 to joint 3
-            Vector3(0,-RIGHT_ARM_PARAMETERS.dse, 0),  -- joint 3 to joint 4 (elbow)
-            Vector3(0, 0, RIGHT_ARM_PARAMETERS.dew),    -- joint 4 to joint 5
-            Vector3(0, 0, 0),  -- joint 5 to joint 6 (wrist)
-            Vector3(0, 0, 0),    -- joint 6 to joint 7
-            Vector3(0, 0, RIGHT_ARM_PARAMETERS.dwt)   -- joint 7 to end effector
-        },
-        H = {
-            -- GLOBAL joint rotation axes - these need to be measured from your actual robot
-            Vector3( 1, 0, 0),  -- Joint 1: X-axis
-            Vector3( 0, 0, 1),  -- Joint 2: Z-axis
-            Vector3( 0,-1, 0),  -- Joint 3:-Y-axis
-            Vector3(-1, 0, 0),  -- Joint 4:-X-axis
-            Vector3( 0, 0, 1),  -- Joint 5: Z-axis
-            Vector3(-1, 0, 0),  -- Joint 6:-X-axis
-            Vector3( 0, 1, 0)   -- Joint 7: Y-axis
-        }
+    kinematics = {}
+}
+RIGHT_ARM_PARAMETERS.kinematics = {
+    P = {
+        -- Position vectors between joints (left-handed: x=right, y=up, z=forward)
+        Vector3( 8, 20, 0),   -- Base to Shoulder (joint 1)
+        Vector3( 0, 0, 0),    -- Shoulder to joint 2
+        Vector3( 0, 0, 0),    -- joint 2 to joint 3
+        Vector3( 0,-RIGHT_ARM_PARAMETERS.dse, 0),  -- joint 3 to joint 4 (elbow)
+        Vector3( 0, 0, RIGHT_ARM_PARAMETERS.dew),    -- joint 4 to joint 5
+        Vector3( 0, 0, 0),  -- joint 5 to joint 6 (wrist)
+        Vector3( 0, 0, 0),    -- joint 6 to joint 7
+        Vector3( 0, 0, RIGHT_ARM_PARAMETERS.dwt)   -- joint 7 to end effector
+    },
+    H = {
+        -- GLOBAL joint rotation axes - these need to be measured from your actual robot
+        Vector3( 1, 0, 0),  -- Joint 1: X-axis
+        Vector3( 0, 0, 1),  -- Joint 2: Z-axis
+        Vector3( 0,-1, 0),  -- Joint 3:-Y-axis
+        Vector3(-1, 0, 0),  -- Joint 4:-X-axis
+        Vector3( 0, 0, 1),  -- Joint 5: Z-axis
+        Vector3(-1, 0, 0),  -- Joint 6:-X-axis
+        Vector3( 0, 1, 0)   -- Joint 7: Y-axis
     }
 }
 
@@ -458,18 +498,27 @@ local function IK_3R_R_3R(R_07, p_0T, psi, arm_parameters) -- returns a list of 
     return Q, is_LS_vec
 end
 
-local function move_arm_to_target(target_pos, target_rot, psi, solution, RIGHT_ARM_PARAMETERS, I)
-    local Q, is_ls_vec = IK_3R_R_3R(target_rot, target_pos, psi, RIGHT_ARM_PARAMETERS)
-    local joints = get_joint_list(RIGHT_ARM_PARAMETERS.custom_joint_names, I)
+local function move_arm_to_target(target_pos, target_rot, psi, solution, arm_parameters, I)
+    local Q, is_ls_vec = IK_3R_R_3R(target_rot, target_pos, psi, arm_parameters)
+    local joints = get_joint_list(arm_parameters.custom_joint_names, I)
     set_joint_angles(joints, Q[solution], I)
-
 end
 
+local itteration = 0
 function Update(I)
-    -- use built in functions like I:GetSubConstructInfo(scid) to get blockinfo 
-    local target_pos = Vector3(15, 8, 10)
-    local target_rot = Matrix.Identity
-    local psi = math.pi/4  -- SEW angle
+    -- use built in functions like I:GetSubConstructInfo(scid) to get blockinfo
+    local start_pos = Vector3(-13, 15, 5)
+    local end_pos = Vector3(-10, 17, 25)
+    local start_rot = Quaternion.identity
+    local end_rot = Quaternion.identity
+    local psi = math.pi * 0.48  -- SEW angle
+    
+    local target_pos = Vector3.Lerp(start_pos, end_pos, itteration / 200)
+    local target_rot = quaternion_to_rotation_matrix(Quaternion.Slerp(start_rot, end_rot, itteration / 200))
+    move_arm_to_target(target_pos, target_rot, psi, 1, LEFT_ARM_PARAMETERS, I)
 
-    move_arm_to_target(target_pos, target_rot, psi, 1, RIGHT_ARM_PARAMETERS, I)
+    if itteration > 200 then
+        itteration = 0
+    end
+    itteration = itteration + 1
 end
