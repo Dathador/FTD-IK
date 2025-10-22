@@ -1,9 +1,5 @@
 -- animation controller
 
--- assume move_arm_to_target is defined elsewhere
-local function move_arm_to_target(target_rot, target_pos, psi, solution, arm_parameters, I)
-end
-
 -- this function eases in and out over two time periods
 function Easing3(timer,x1,x2,x3,x4,a,b,c,d)
     --[[
@@ -119,7 +115,9 @@ function animation:new(obj)
     local obj = {
         keyframes = {},
         duration = 0, -- in milliseconds
-        playing = false
+        start_time = 0,
+        playing = false,
+        loop = false
     } or obj
     setmetatable(obj, self)
     self.__index = self
@@ -129,7 +127,7 @@ end
 -- get current keyframe index and next keyframe index based on current_time
 function animation:get_keyframe_indices(current_time)
     local kf1_index = 1
-    local kf2_index = 1
+    local kf2_index = 2
     for i = 1, #self.keyframes - 1 do
         if current_time >= self.keyframes[i].time and current_time < self.keyframes[i + 1].time then
             kf1_index = i
@@ -141,12 +139,13 @@ function animation:get_keyframe_indices(current_time)
 end
 
 -- interpolate between two keyframes based on current_time
-function animation:interpolate_keyframes(currrent_time, I)
-    local kf1_index, kf2_index = self:get_keyframe_indices(currrent_time)
+function animation:interpolate_keyframes(current_time, I)
+    local kf1_index, kf2_index = self:get_keyframe_indices(current_time)
+    I:Log("Interpolating between keyframes " .. kf1_index .. " and " .. kf2_index)
     local kf1 = self.keyframes[kf1_index]
     local kf2 = self.keyframes[kf2_index]
 
-    local t = (currrent_time - kf1.time) / (kf2.time - kf1.time)
+    local t = (current_time - kf1.time) / (kf2.time - kf1.time)
     t = Mathf.Clamp(t, 0, 1)
 
     -- right arm
@@ -171,14 +170,19 @@ end
 -- I:GetTimeSinceSpawn()
 -- I:GetGameTime()
 
-
+function KeyInput(I)
+    local keys={
+        TKey = I:GetCustomAxis("TKey"),
+        GKey = I:GetCustomAxis("GKey")
+    }
+    return keys
+end
 
 local state_list = {
     "idle",
     "punch"
 }
 local state = state_list[1]
-
 
 local punch = animation:new(
     {
@@ -236,13 +240,41 @@ local punch = animation:new(
             }
         },
         duration = 600,
-        playing = false
+        playing = false,
+        loop = false
     }
 )
+
 
 
 function Update(I)
     local current_time = I:GetTimeSinceSpawn()
 
+    -- start punch animation on key press
+    -- local keys = KeyInput(I)
+    -- if state == "idle" and keys.TKey == 1 then
+    if state == "idle" then
+        state = "punch"
+        punch.playing = true
+        punch.start_time = current_time
+    end
 
+    if state == "punch" then
+        local elapsed_time = current_time - punch.start_time
+        if elapsed_time > punch.duration then
+            if punch.loop then
+                punch.start_time = current_time
+                elapsed_time = 0
+            else
+                punch.playing = false
+                state = "idle"
+            end
+        end
+
+        if punch.playing then
+            punch:interpolate_keyframes(elapsed_time, I)
+        else -- animation finished
+            state = "idle"
+        end
+    end
 end

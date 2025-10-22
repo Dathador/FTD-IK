@@ -498,27 +498,361 @@ local function IK_3R_R_3R(R_07, p_0T, psi, arm_parameters) -- returns a list of 
     return Q, is_LS_vec
 end
 
-local function move_arm_to_target(target_pos, target_rot, psi, solution, arm_parameters, I)
+local function move_arm_to_target(arm_parameters, target_rot, target_pos, psi, solution, I)
     local Q, is_ls_vec = IK_3R_R_3R(target_rot, target_pos, psi, arm_parameters)
     local joints = get_joint_list(arm_parameters.custom_joint_names, I)
     set_joint_angles(joints, Q[solution], I)
 end
 
-local itteration = 0
-function Update(I)
-    -- use built in functions like I:GetSubConstructInfo(scid) to get blockinfo
-    local start_pos = Vector3(-13, 15, 5)
-    local end_pos = Vector3(-10, 17, 25)
-    local start_rot = Quaternion.identity
-    local end_rot = Quaternion.identity
-    local psi = math.pi * 0.48  -- SEW angle
-    
-    local target_pos = Vector3.Lerp(start_pos, end_pos, itteration / 200)
-    local target_rot = quaternion_to_rotation_matrix(Quaternion.Slerp(start_rot, end_rot, itteration / 200))
-    move_arm_to_target(target_pos, target_rot, psi, 1, LEFT_ARM_PARAMETERS, I)
 
-    if itteration > 200 then
-        itteration = 0
+-- this function is taken from the code controling the Depthian https://steamcommunity.com/sharedfiles/filedetails/?id=2792198306&searchtext=depthian
+-- but has been made into a closure so easing functions can be saved into the keyframes.
+-- function to produce a smoth transition between two values
+-- x1 and x2 change the start and stop of the smoth curve
+-- a and b change the shape of the curve
+local function new_easing_function(a,b)
+    --[[
+    x1 to x2 ramps from 0 to 1
+    a=1,b=1 proportional
+    a>1,b=1 power function
+    a<1,b>1 looks like an exponential  ( a=(10-b)/10 rather pretty )
+    a>1,b<1 looks like an logarithmic  ( a=1.3,b=0.5,a=1.7,b=0.3,a=2,b=0.2,a=3.2,b=0.1) ( a=( 1+(1-b)/2 )*10/9 rather pretty )
+    ]]
+
+    return function(time)
+        -- var1 starts at 0, then ramps linearly to 1 between x1 and x2, then stays at 1.
+        -- This is used by the if statement blow to decide which curve to use
+        local var1 = Mathf.Clamp(time,0,1)
+        
+        local var2 = 1
+        if var1 <= 0.5 then -- first half of the curve
+            var2 = 0.5*(2*var1)^a
+        elseif var1 <= 1 then -- second half of the curve
+            var2 = 1-0.5*(-2*var1+2)^a
+        end
+        return var2^b
     end
-    itteration = itteration + 1
 end
+
+local function angle_ease(a1, a2, easing_function, t) -- handles angle wrap around
+    local delta = a2 - a1
+    if delta > math.pi then
+        delta = delta - 2 * math.pi
+    elseif delta < -math.pi then
+        delta = delta + 2 * math.pi
+    end
+    return a1 + delta * easing_function(t)
+end
+
+local control_point = {}
+function control_point:new(position, rotation, sew_angle)
+    local obj = {
+        position = position or Vector3(0, 0, 0),
+        rotation = rotation or Quaternion.Identity,
+        sew_angle = sew_angle or 0
+    }
+    setmetatable(obj, self)
+    self.__index = self
+    return obj
+end
+
+local keyframe = {}
+function keyframe:new(obj)
+    local obj = obj or {
+        time = 0,
+        right_arm = {
+            position = Vector3(0, 0, 0),
+            rotation = Quaternion.Identity, -- Quaternion so we can do slerp
+            sew_angle = 0,
+            -- interpolations between keyframe i and i+1 will use the easing function of keyframe i+1
+            easing_function = nil,
+            ik_solution = 1,
+            control_points = {}
+        },
+        left_arm = {
+            position = Vector3(0, 0, 0),
+            rotation = Quaternion.Identity,
+            sew_angle = 0,
+            easing_function = nil,
+            ik_solution = 1,
+            control_points = {}
+        },
+        right_hand = {
+            -- TODO: add hand parameters here
+        },
+        left_hand = {
+            -- TODO: add hand parameters here
+        },
+        wings = {
+            -- TODO: add wing parameters here
+        }
+    }
+    setmetatable(obj, self)
+    self.__index = self
+    return obj
+end
+
+local animation = {}
+function animation:new(keyframes, duration, start_time, playing, loop)
+    local obj = {
+        keyframes = keyframes or {keyframe:new()},
+        duration = duration, -- in seconds
+        start_time = start_time,
+        playing = playing,
+        loop = loop
+    }
+    setmetatable(obj, self)
+    self.__index = self
+    return obj
+end
+
+-- get current keyframe index and next keyframe index based on current_time
+function animation:get_keyframe_indices(current_time, I)
+    if #self.keyframes < 2 then
+        I:Log("Error: Not enough keyframes to interpolate")
+        I:Log("Keyframes count: " .. #self.keyframes)
+        return nil, nil
+    end
+
+    if current_time < self.keyframes[1].time then
+        return 1, 2
+    end
+    
+    if current_time >= self.keyframes[#self.keyframes].time then
+        return #self.keyframes - 1, #self.keyframes
+    end
+    
+    for i = 1, #self.keyframes - 1 do
+        if current_time >= self.keyframes[i].time and current_time < self.keyframes[i + 1].time then
+            return i, i + 1
+        end
+    end
+
+    return #self.keyframes - 1, #self.keyframes
+end
+
+-- interpolate between two keyframes based on current_time
+function animation:interpolate_keyframes(current_time, I)
+    local kf1_index, kf2_index = self:get_keyframe_indices(current_time, I)
+    I:Log("Interpolating between keyframes " .. kf1_index .. " and " .. kf2_index)
+    local kf1 = self.keyframes[kf1_index]
+    local kf2 = self.keyframes[kf2_index]
+    I:Log("kf1 object: " .. tostring(kf1))
+    I:Log("kf2 object: " .. tostring(kf2))
+
+    local t = (current_time - kf1.time) / (kf2.time - kf1.time)
+    t = Mathf.Clamp(t, 0, 1)
+
+    -- right arm
+    local right_arm_rot = Quaternion.SlerpUnclamped(kf1.right_arm.rotation, kf2.right_arm.rotation, kf1.right_arm.easing_function(t))
+    local right_arm_pos = Vector3.Lerp(kf1.right_arm.position, kf2.right_arm.position, kf1.right_arm.easing_function(t))
+    local right_arm_sew = angle_ease(kf1.right_arm.sew_angle, kf2.right_arm.sew_angle, kf1.right_arm.easing_function, t)
+
+    move_arm_to_target(RIGHT_ARM_PARAMETERS, quaternion_to_rotation_matrix(right_arm_rot), right_arm_pos, right_arm_sew, kf2.right_arm.ik_solution, I)
+
+    -- use SlerpUnclamped instead of slerp becuase slerp has a bug where it changes the value of kf2.left_arm.rotation
+    local left_arm_rot = Quaternion.SlerpUnclamped(kf1.left_arm.rotation, kf2.left_arm.rotation, kf1.left_arm.easing_function(t))
+    local left_arm_pos = Vector3.Lerp(kf1.left_arm.position, kf2.left_arm.position, kf1.left_arm.easing_function(t))
+    local left_arm_sew = angle_ease(kf1.left_arm.sew_angle, kf2.left_arm.sew_angle, kf1.left_arm.easing_function, t)
+
+    move_arm_to_target(LEFT_ARM_PARAMETERS, quaternion_to_rotation_matrix(left_arm_rot), left_arm_pos, left_arm_sew, kf2.left_arm.ik_solution, I)
+end
+
+local factorial = {
+    [0] = 1,
+    [1] = 1,
+    [2] = 2,
+    [3] = 6,
+    [4] = 24
+}
+
+-- Bernstein polynomial for Bezier curves
+local function bezier(t, points) -- points is a list of Vector3 control points and the start and end points
+    local n = #points - 1
+    local result = Vector3(0, 0, 0)
+    for i = 0, n do
+        local binom = factorial[n] / (factorial[i] * factorial[n - i])
+        local coeff = binom * (t ^ i) * ((1 - t) ^ (n - i))
+        result = result + points[i + 1] * coeff
+    end
+    return result
+end
+
+-- using I:LogToHud("draw"..message, args)
+local function draw_animation_points(animation, I)
+    local right_arm_points = {}
+    local left_arm_points = {}
+    for _, kf in ipairs(animation.keyframes) do
+        table.insert(right_arm_points, kf.right_arm.position)
+        for _, cp in ipairs(kf.right_arm.control_points) do
+            table.insert(right_arm_points, cp.position)
+        end
+        table.insert(left_arm_points, kf.left_arm.position)
+        for _, cp in ipairs(kf.left_arm.control_points) do
+            table.insert(left_arm_points, cp.position)
+        end
+    end
+
+    for i = 1, #left_arm_points do
+        I:LogToHud("draw sphere ^p 1 color green width 0.1 duration 1", {p = left_arm_points[i]})
+    end
+end
+
+-- useful FTD interface functions
+-- I:GetTime()
+-- I:GetTimeSinceSpawn()
+-- I:GetGameTime()
+-- I:GetNumberOfMainframes()
+-- I:GetNumberOfTargets(mainframe_idx)
+-- I:GetTargetInfo(mainframe_idx, target_idx)
+-- I:GetTargetPositionInfo(mainframe_idx, target_idx)
+-- I:GetTargetPositionInfoForPosition(mainframe_idx, x, y, z)
+
+target_info = {
+    Priority = 0,
+    Score = 0.0,
+    AimPointPosition = Vector3(0,0,0),
+    Team = 0,
+    Protected = false,
+    Position = Vector3(0,0,0),
+    Velocity = Vector3(0,0,0),
+    PlayerTargetChoice = false,
+    Id = 0
+}
+
+target_position_info = {
+    Valid = false,
+    Azimuth = 0.0,
+    Elevation = 0.0,
+    ElivationForAltitudeComponentOnly = 0.0,
+    Range = 0.0,
+    Direction = Vector3(0,0,0),
+    GroundDistance = 0.0,
+    AltitudeAboveSeaLevel = 0.0,
+    Position = Vector3(0,0,0),
+    Velocity = Vector3(0,0,0)
+}
+
+function KeyInput(I)
+    local keys={
+        TKey = I:GetCustomAxis("TKey"),
+        GKey = I:GetCustomAxis("GKey")
+    }
+    return keys
+end
+
+local state_list = {
+    "idle",
+    "punch"
+}
+local state = state_list[1]
+
+local punch = animation:new(
+    {
+        keyframe:new{
+            time = 0,
+            right_arm = {
+                position = Vector3(8, 15, 5),
+                rotation = Quaternion.Euler(0, 0, 0),
+                sew_angle = -2 * math.pi * 0.2,
+                easing_function = new_easing_function(1, 1),
+                ik_solution = 2,
+                control_points = {}
+            },
+            left_arm = {
+                position = Vector3(-10, 15, 5),
+                rotation = Quaternion.Euler(-45, 30, 0),
+                sew_angle = 2 * math.pi * 0.2,
+                easing_function = new_easing_function(1, 1),
+                ik_solution = 3,
+                control_points = {
+                    control_point:new(Vector3(-12, 15, 0), Quaternion.Euler(-30, 30, 0), 2 * math.pi * 0.1),
+                    control_point:new(Vector3(-14, 15, -5), Quaternion.Euler(-15, 0, 0), 2 * math.pi * 0.1)
+                }
+            },
+            right_hand = {
+                -- TODO: add hand parameters here
+            },
+            left_hand = {
+                -- TODO: add hand parameters here
+            },
+            wings = {
+                -- TODO: add wing parameters here
+            }
+        },
+        keyframe:new{
+            time = 5,
+            right_arm = {
+                position = Vector3(8, 15, 5),
+                rotation = Quaternion.Euler(0, 0, 0),
+                sew_angle = -2 * math.pi * 0.2,
+                easing_function = new_easing_function(1, 1),
+                ik_solution = 2,
+                control_points = {}
+            },
+            left_arm = {
+                position = Vector3(-3, 15, 21),
+                rotation = Quaternion.Euler(-45, 30, 0),
+                sew_angle = 2 * math.pi * 0.2,
+                easing_function = new_easing_function(1, 1),
+                ik_solution = 3,
+                control_points = {}
+            },
+            right_hand = {
+                -- TODO: add hand parameters here
+            },
+            left_hand = {
+                -- TODO: add hand parameters here
+            },
+            wings = {
+                -- TODO: add wing parameters here
+            }
+        }
+    },
+    5,
+    false,
+    true
+)
+
+function Update(I)
+    draw_animation_points(punch, I)
+
+    I:ClearLogs()
+    I:Log("punch duration: " .. punch.duration)
+    I:Log("number of keyframes: " .. #punch.keyframes)
+
+    local current_time = I:GetTimeSinceSpawn()
+    I:Log("Current time: " .. current_time)
+    I:Log("Current state: " .. state)
+
+    -- start punch animation on key press
+    -- local keys = KeyInput(I)
+    -- if state == "idle" and keys.TKey == 1 then
+    if state == "idle" then
+        state = "punch"
+        punch.playing = true
+        punch.start_time = current_time
+    end
+
+    if state == "punch" then
+        local elapsed_time = current_time - punch.start_time
+        if elapsed_time > punch.duration then
+            if punch.loop then
+                punch.start_time = current_time
+                elapsed_time = 0
+            else
+                punch.playing = false
+                state = "idle"
+            end
+        end
+
+        if punch.playing then
+            punch:interpolate_keyframes(elapsed_time, I)
+        else
+            state = "idle"
+        end
+    end
+end
+
+
+

@@ -1,0 +1,73 @@
+-- game interface functions and structs
+
+
+-- useful FTD interface functions
+I:GetTime()
+I:GetTimeSinceSpawn()
+I:GetGameTime()
+I:GetNumberOfMainframes()
+I:GetNumberOfTargets(mainframe_idx)
+I:GetTargetInfo(mainframe_idx, target_idx)
+I:GetTargetPositionInfo(mainframe_idx, target_idx)
+I:GetTargetPositionInfoForPosition(mainframe_idx, x, y, z)
+I:GetFriendlyInfo(index)
+I:GetFriendlyCount()
+I:GetWeaponCount()
+I:GetWeaponBlockInfo(index)
+I:GetFriendlyInfo(weapon.id)
+I:GetConstructForwardVector()
+I:GetConstructRightVector()
+I:GetConstructUpVector()
+I:GetConstructRoll()
+I:GetConstructPitch()
+I:GetConstructYaw()
+I:GetConstructPosition()
+I:GetVelocityVector()
+I:GetLocalAngularVelocity()
+I:GetAmmoCount(id)
+I:GetFuelFraction()
+I:GetEnergyFraction()
+I:GetElectricPowerFraction()
+I:GetHealthFraction()
+I:GetNumberOfTargets(mainframe_idx)
+I:GetTargetInfo(0, i)
+
+target_info = {
+    Priority = 0,
+    Score = 0.0,
+    AimPointPosition = Vector3(0,0,0),
+    Team = 0,
+    Protected = false,
+    Position = Vector3(0,0,0),
+    Velocity = Vector3(0,0,0),
+    PlayerTargetChoice = false,
+    Id = 0
+}
+
+target_position_info = {
+    Valid = false,
+    Azimuth = 0.0,
+    Elevation = 0.0,
+    ElivationForAltitudeComponentOnly = 0.0,
+    Range = 0.0,
+    Direction = Vector3(0,0,0),
+    GroundDistance = 0.0,
+    AltitudeAboveSeaLevel = 0.0,
+    Position = Vector3(0,0,0),
+    Velocity = Vector3(0,0,0)
+}
+
+--[[
+WeaponInfo 
+Valid [bool]: false means this WeaponInfo packet is useless. Move onto the next valid one.
+LocalPosition [Vector3]: the local position in the vehicle of the weapon. x is right, y is up and z is forwards.
+GlobalPosition [Vector3]: the global position of the weapon. x is East, y is Up and Z is North.
+LocalFirePoint [Vector3]: the local position in the vehicle where the projectile or laser will be created.
+GlobalFirePoint [Vector3]: the global position in the world where the projectile or laser will be created.
+Speed [float]: the speed in meters per second of the weapon- approximately correct for most weapon types.
+CurrentDirection [Vector3]: the direction in global coordinate system that the weapon is facing
+WeaponType [int]: the type of the weapon. cannon = 0,missile = 1 ,laser = 2,harpoon = 3,turret = 4,missilecontrol = 5,fireControlComputer  =6
+WeaponSlot [int]: the weapon slot of the weapon itself. 0 -> 5.
+WeaponSlotMask [int]: the weapon slot bit mask. The rightmost bit represents 'ALL' and is always on, and the second bit represents slot 1, etc. (for example 100111 will respond to slots All, 1, 2, and 5)
+PlayerCurrentlyControllingIt [bool]: true if the player is controlling this weapon at the moment
+]]
